@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/theme/Theme.qml</file>
+        <file>qml/theme/qmldir</file>
+        <file>qml/components/TopStatusBar.qml</file>
+        <file>qml/components/LeftClusterPanel.qml</file>
+        <file>qml/components/CenterSceneView.qml</file>
+        <file>qml/components/RightInfoPanel.qml</file>
+        <file>qml/components/BottomActionDock.qml</file>
+        <file>qml/components/ScenarioReplayBar.qml</file>
+        <file>qml/components/ScenarioPickerDialog.qml</file>
+        <file>qml/components/drawers/ObjectInspectorDrawer.qml</file>
+        <file>qml/components/drawers/AlertDrawer.qml</file>
+        <file>qml/components/scene/ObjectScene.qml</file>
+        <file>qml/components/gauges/DashboardGaugeStyle.qml</file>
+        <file>qml/components/gauges/TachometerStyle.qml</file>
+        <file>qml/components/gauges/IconGaugeStyle.qml</file>
+        <file>qml/components/gauges/TurnIndicator.qml</file>
+    </qresource>
+</RCC>

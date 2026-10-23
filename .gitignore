@@ -1,0 +1,13 @@
+# Python bytecode and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Qt/qmake build output
+TOPST_DashBoard/Makefile
+TOPST_DashBoard/.qmake.stash
+TOPST_DashBoard/*.o
+TOPST_DashBoard/moc_*.cpp
+TOPST_DashBoard/moc_*.h
+TOPST_DashBoard/qrc_*.cpp
+TOPST_DashBoard/TOPST_DashBoard

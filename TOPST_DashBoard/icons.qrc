@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="test.obj">test.obj</file>
+    </qresource>
+</RCC>
