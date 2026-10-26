@@ -46,6 +46,7 @@ class ResultPipeline:
             float(payload["recommended_speed_kmh"]),
             float(payload.get("steering", 0.0)),
             payload["proximity_status"] in ("slowing", "stop"),
+            payload["brake_led_simulated"],
         )
         return payload
 

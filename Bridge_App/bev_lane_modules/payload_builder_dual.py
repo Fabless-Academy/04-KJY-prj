@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from .app_config import PayloadConfig
 from .pathing import compute_path_pursuit_steering
+from .payload import build_lane_outputs
 from .payload import build_lane_payload
 from .payload import build_object_payload
 from .payload import compute_lane_model
@@ -24,7 +25,7 @@ def build_dual_zonal_payload(
     scenarios: ScenarioManager,
 ) -> Dict[str, Any]:
     """표시용 BEV와 제어용 BEV를 따로 사용해 Qt/VCP용 payload를 만든다."""
-    display_lanes = build_lane_payload(
+    display_lanes, display_lane_lines = build_lane_outputs(
         result,
         display_config.homography,
         display_config.bev_width,
@@ -98,6 +99,7 @@ def build_dual_zonal_payload(
         "width": display_config.bev_width,
         "height": display_config.bev_height,
         "lanes": display_lanes,
+        "lane_lines": display_lane_lines,
         "bev_width": display_config.bev_width,
         "bev_height": display_config.bev_height,
         "bev_lanes": display_lanes,

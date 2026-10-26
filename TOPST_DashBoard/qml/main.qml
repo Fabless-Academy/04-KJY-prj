@@ -30,6 +30,7 @@ ApplicationWindow {
     property string connectionState: "Idle"
     property string serverEndpoint: "Unknown"
     property var lanePolylines: [[], [], [], []]
+    property var detectedLaneLines: []
     property var laneModel: ({})
     property var bevObjects: []
     property int laneFrameWidth: 800
@@ -78,7 +79,7 @@ ApplicationWindow {
         target: tcpClient
         // Python 브리지 -> TcpClient -> root property -> 각 패널로 이어지는 데이터 연결 지점이다.
         function onTelemetryUpdated(r, s, f, st) {
-            root.speedKph = Math.max(0, Math.min(280, s))
+            root.speedKph = Math.max(0, Math.min(70, s))
             root.rpm = Math.max(0, Math.min(8000, r))
             root.fuelRatio = Math.max(0, Math.min(1, f / 1400.0))
             root.temperatureRatio = Math.max(0.2, Math.min(1, 0.28 + (r / 8000) * 0.5 + (s / 280) * 0.22))
@@ -91,7 +92,7 @@ ApplicationWindow {
         }
         function onSimulatedBrakeLedUpdated(active) { root.simulatedBrakeLed = active }
         function onObjectDataUpdated(j) { try { root.bevObjects = JSON.parse(j) } catch(e) { root.bevObjects = [] } }
-        function onLaneDataUpdated(j, w, h) { try { root.lanePolylines = JSON.parse(j) } catch(e) { root.lanePolylines = [[], [], [], []] }; root.laneFrameWidth = Math.max(1, w); root.laneFrameHeight = Math.max(1, h) }
+        function onLaneDataUpdated(j, allLinesJson, w, h) { try { root.lanePolylines = JSON.parse(j) } catch(e) { root.lanePolylines = [[], [], [], []] }; try { root.detectedLaneLines = JSON.parse(allLinesJson) } catch(e) { root.detectedLaneLines = root.lanePolylines }; root.laneFrameWidth = Math.max(1, w); root.laneFrameHeight = Math.max(1, h) }
         function onLaneModelUpdated(j) { try { root.laneModel = JSON.parse(j) } catch(e) { root.laneModel = ({}) } }
         function onConnectionStatusChanged(s) { root.connectionState = s }
         function onEndpointChanged(e) { root.serverEndpoint = e }

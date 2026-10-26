@@ -12,6 +12,7 @@ Scene3D {
     // Python 브리지에서 전달한 BEV 데이터와 3D 장면 스케일 설정값들이다.
     property var bevObjects: []
     property var lanePolylines: [[], [], [], []]
+    property var detectedLaneLines: []
     property var laneModel: ({})
     property int laneFrameWidth: 800
     property int laneFrameHeight: 480
@@ -36,6 +37,16 @@ Scene3D {
     function laneAt(index) {
         var lane = index < root.lanePolylines.length ? root.lanePolylines[index] : []
         return lane && lane.length !== undefined ? lane : []
+    }
+
+    function allLaneRibbonPoints() {
+        var ribbons = []
+        for (var i = 0; i < root.detectedLaneLines.length; ++i) {
+            var points = root.detectedLaneLines[i]
+            if (points && points.length > 1)
+                ribbons.push(sampledWorldPoints(points, root.laneCurveSegments, root.roadY + 0.05))
+        }
+        return ribbons
     }
 
     function centerline() {
@@ -614,50 +625,14 @@ Scene3D {
             ]
         }
 
-        // === LANE LINES (glowing cyan/blue) ===
+        // === ALL DETECTED LANE LINES ===
         Entity {
-            enabled: root.laneRibbonPoints(0).length > 1
+            enabled: root.allLaneRibbonPoints().length > 0
             components: [
-                LaneRibbonMesh { points: root.laneRibbonPoints(0); width: root.laneWidth(0) },
+                LaneRibbonMesh { lineSets: root.allLaneRibbonPoints(); width: 0.12 },
                 PhongMaterial {
-                    diffuse: root.laneColor(0)
-                    ambient: root.laneColor(0)
-                    specular: "#eef5fa"
-                    shininess: 14
-                }
-            ]
-        }
-        Entity {
-            enabled: root.laneRibbonPoints(1).length > 1
-            components: [
-                LaneRibbonMesh { points: root.laneRibbonPoints(1); width: root.laneWidth(1) },
-                PhongMaterial {
-                    diffuse: root.laneColor(1)
-                    ambient: root.laneColor(1)
-                    specular: "#ffffff"
-                    shininess: 18
-                }
-            ]
-        }
-        Entity {
-            enabled: root.laneRibbonPoints(2).length > 1
-            components: [
-                LaneRibbonMesh { points: root.laneRibbonPoints(2); width: root.laneWidth(2) },
-                PhongMaterial {
-                    diffuse: root.laneColor(2)
-                    ambient: root.laneColor(2)
-                    specular: "#ffffff"
-                    shininess: 18
-                }
-            ]
-        }
-        Entity {
-            enabled: root.laneRibbonPoints(3).length > 1
-            components: [
-                LaneRibbonMesh { points: root.laneRibbonPoints(3); width: root.laneWidth(3) },
-                PhongMaterial {
-                    diffuse: root.laneColor(3)
-                    ambient: root.laneColor(3)
+                    diffuse: "#b7c3cc"
+                    ambient: "#b7c3cc"
                     specular: "#eef5fa"
                     shininess: 14
                 }

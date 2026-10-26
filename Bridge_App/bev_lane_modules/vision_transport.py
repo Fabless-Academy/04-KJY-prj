@@ -262,12 +262,24 @@ def vision_result_loop(
     stop_event: threading.Event,
 ) -> None:
     """Read Vision Protocol JSON results and hand them to zonal_app's payload path."""
+    logged_lane_sample = False
     while not stop_event.is_set():
         try:
             result = bridge.recv_result()
             if result is None:
                 time.sleep(0.001)
                 continue
+            if not logged_lane_sample:
+                lane_sample = {
+                    "width": result.get("width"),
+                    "height": result.get("height"),
+                    "lanes": result.get("lanes"),
+                }
+                print(
+                    "[zonal-app] First inference lane sample:\n"
+                    + json.dumps(lane_sample, ensure_ascii=False, indent=2)
+                )
+                logged_lane_sample = True
             process_result(result)
         except Exception as exc:
             print(f"[zonal-app] Vision result error: {exc}")

@@ -63,6 +63,7 @@ class BevLaneState:
     def __init__(self):
         self.lock = threading.Lock()
         self.smoothed_lanes: List[List[Dict[str, int]]] = [[], [], [], []]
+        self.smoothed_detected_lanes: List[List[Dict[str, int]]] = []
         self.object_tracks: List[Dict[str, Any]] = []
         self.next_track_id = 1
         self.smoothed_steering_deg = 0.0
@@ -74,6 +75,61 @@ class BevLaneState:
         with self.lock:
             self.smoothed_lanes = smooth_lane_set(self.smoothed_lanes, lanes, alpha)
             return [[dict(point) for point in lane] for lane in self.smoothed_lanes]
+
+    def smooth_detected_lanes(
+        self,
+        lanes: List[List[Dict[str, int]]],
+        alpha: float,
+        bev_width: int,
+    ) -> List[List[Dict[str, int]]]:
+        """BEV 하단 위치로 이전 프레임의 같은 차선을 찾아 평활화한다."""
+        with self.lock:
+            previous = self.smoothed_detected_lanes
+            previous_x = [self._lane_bottom_x(lane) for lane in previous]
+            current_x = [self._lane_bottom_x(lane) for lane in lanes]
+            gaps = [
+                right - left
+                for positions in (previous_x, current_x)
+                for left, right in zip(positions, positions[1:])
+                if right > left
+            ]
+            median_gap = sorted(gaps)[len(gaps) // 2] if gaps else float(bev_width)
+            match_distance = max(30.0, min(float(bev_width) * 0.12, median_gap * 0.45))
+
+            candidates = sorted(
+                (
+                    (abs(old_x - new_x), old_idx, new_idx)
+                    for old_idx, old_x in enumerate(previous_x)
+                    for new_idx, new_x in enumerate(current_x)
+                    if abs(old_x - new_x) <= match_distance
+                ),
+                key=lambda item: item[0],
+            )
+            matched_previous = set()
+            matched_current = set()
+            smoothed: List[List[Dict[str, int]]] = [
+                [dict(point) for point in lane] for lane in lanes
+            ]
+            for _, old_idx, new_idx in candidates:
+                if old_idx in matched_previous or new_idx in matched_current:
+                    continue
+                smoothed[new_idx] = smooth_lane_points(
+                    previous[old_idx],
+                    lanes[new_idx],
+                    alpha,
+                )
+                matched_previous.add(old_idx)
+                matched_current.add(new_idx)
+
+            smoothed.sort(key=self._lane_bottom_x)
+            self.smoothed_detected_lanes = smoothed
+            return [[dict(point) for point in lane] for lane in self.smoothed_detected_lanes]
+
+    @staticmethod
+    def _lane_bottom_x(lane: List[Dict[str, int]]) -> float:
+        """차선 하단의 최대 세 점으로 대표 x 위치를 계산한다."""
+        sample = sorted(lane, key=lambda point: point["y"], reverse=True)[:3]
+        return sum(float(point["x"]) for point in sample) / len(sample) if sample else 0.0
 
     def smooth_steering(self, steering_deg: float, alpha: float) -> float:
         """steering 값을 지수평활해 급격한 튐을 줄인다."""

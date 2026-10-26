@@ -67,6 +67,7 @@ Item {
             // 실제 lane/object/path 렌더링은 ObjectScene이 담당하고, 이 컨테이너는 입력만 전달한다.
             bevObjects: app.overlayObject ? root.bevObjects : []
             lanePolylines: app.overlayLane ? root.lanePolylines : [[], [], [], []]
+            detectedLaneLines: app.overlayLane ? root.detectedLaneLines : []
             laneModel: root.laneModel
             laneFrameWidth: root.laneFrameWidth
             laneFrameHeight: root.laneFrameHeight

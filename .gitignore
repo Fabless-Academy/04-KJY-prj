@@ -11,3 +11,9 @@ TOPST_DashBoard/moc_*.cpp
 TOPST_DashBoard/moc_*.h
 TOPST_DashBoard/qrc_*.cpp
 TOPST_DashBoard/TOPST_DashBoard
+
+# Scenario video files
+/Bridge_App/split_out/**/*.mp4
+/Bridge_App/split_out/**/*.mov
+/Bridge_App/split_out/**/*.avi
+/Bridge_App/split_out/**/*.mkv

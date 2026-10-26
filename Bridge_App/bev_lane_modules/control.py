@@ -9,9 +9,12 @@ IPC_PATH = "/dev/tcc_ipc_micom"
 CMD_WHEEL = 0x103
 CMD_MOTOR = 0x104
 CMD_EMER_SIGNAL = 0x101
+CMD_BRAKE_LED = 0x102
 MAX_SPEED_COMMAND = 0x64
 EMER_SIGNAL_ON = 0x01
 EMER_SIGNAL_OFF = 0x02
+BRAKE_LED_ON = 0x01
+BRAKE_LED_OFF = 0x02
 
 STR_MIN, STR_MID, STR_MAX = 92, 66, 42
 AUTO_STEER_LIMIT = 14.0
@@ -48,6 +51,7 @@ class IpcSender:
         self.last_send_ts = 0.0
         self.last_speed_bytes: Optional[bytes] = None
         self.last_emergency_signal_active: Optional[bool] = None
+        self.last_brake_led_active: Optional[bool] = None
 
     def start(self) -> None:
         """제어가 활성화된 경우 IPC 디바이스를 연다."""
@@ -65,8 +69,14 @@ class IpcSender:
                 pass
             self.handle = None
 
-    def send(self, speed_command: float, steering_deg: float, emergency_signal_active: bool) -> None:
-        """주기 제한을 지키면서 속도/조향 및 비상등 상태 명령을 전송한다."""
+    def send(
+        self,
+        speed_command: float,
+        steering_deg: float,
+        emergency_signal_active: bool,
+        brake_led_active: bool,
+    ) -> None:
+        """주기 제한을 지키면서 속도/조향 및 램프 상태 명령을 전송한다."""
         if self.handle is None:
             return
         now = time.time()
@@ -93,4 +103,14 @@ class IpcSender:
                 emergency_signal_data,
             )
             self.last_emergency_signal_active = emergency_signal_active
+        if brake_led_active != self.last_brake_led_active:
+            brake_led_data = bytes([BRAKE_LED_ON if brake_led_active else BRAKE_LED_OFF])
+            IPC_SendPacketWithIPCHeader(
+                self.handle,
+                1,
+                0,
+                CMD_BRAKE_LED,
+                brake_led_data,
+            )
+            self.last_brake_led_active = brake_led_active
         self.last_send_ts = now

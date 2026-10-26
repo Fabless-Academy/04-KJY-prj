@@ -1,7 +1,7 @@
 from __future__ import annotations
 """차선과 객체 결과를 Qt가 소비하는 payload 구조로 변환하는 모듈."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from .geometry import (
     BevCorrection,
     build_centerline,
     compute_pure_pursuit_steering,
-    fit_lane_set,
+    fit_lane_curve,
     transform_object_foot,
     transform_points,
 )
@@ -75,7 +75,7 @@ def _assign_object_lane_id(
     return None
 
 
-def _normalize_lane_slots(
+def _transform_lanes(
     lanes_in: List[Dict[str, Any]],
     homography: np.ndarray,
     payload_width: int,
@@ -83,10 +83,8 @@ def _normalize_lane_slots(
     source_width: int,
     source_height: int,
     correction: Optional[BevCorrection],
-    bev_width: int,
-    lane_state: Optional[BevLaneState],
-) -> List[List[Dict[str, int]]]:
-    """입력 차선들을 좌->우 순서의 4개 고정 슬롯으로 정규화한다."""
+) -> List[Dict[str, Any]]:
+    """입력 차선을 BEV 좌표로 변환하고 하단 x 위치로 정렬한다."""
     transformed: List[Dict[str, Any]] = []
     for lane in lanes_in:
         points = transform_points(
@@ -110,6 +108,15 @@ def _normalize_lane_slots(
         )
 
     transformed.sort(key=lambda lane: lane["bottom_x"])
+    return transformed
+
+
+def _normalize_lane_slots(
+    transformed: List[Dict[str, Any]],
+    bev_width: int,
+    lane_state: Optional[BevLaneState],
+) -> List[List[Dict[str, int]]]:
+    """변환된 차선 중 ego 쌍과 바로 이웃한 경계를 고정 슬롯으로 고른다."""
     slots: List[List[Dict[str, int]]] = [[], [], [], []]
     if not transformed:
         return slots
@@ -154,6 +161,109 @@ def _normalize_lane_slots(
     return slots
 
 
+def build_lane_outputs(
+    result: Dict[str, Any],
+    homography: np.ndarray,
+    bev_width: int,
+    bev_height: int,
+    source_width: int,
+    source_height: int,
+    correction: Optional[BevCorrection],
+    lane_fit_degree: int,
+    lane_fit_samples: int,
+    lane_fit_min_points: int,
+    lane_top_ratio: float,
+    lane_bottom_ratio: float,
+    lane_state: Optional[BevLaneState],
+    lane_smoothing: float,
+) -> Tuple[List[List[Dict[str, int]]], List[List[Dict[str, int]]]]:
+    """ego 처리용 4슬롯과 화면 표시용 전체 차선 목록을 함께 만든다."""
+    payload_width = int(result.get("width", 800))
+    payload_height = int(result.get("height", 480))
+    lanes_in = result.get("lanes", []) or []
+    transformed = _transform_lanes(
+        lanes_in,
+        homography,
+        payload_width,
+        payload_height,
+        source_width,
+        source_height,
+        correction,
+    )
+    all_lanes = [list(lane["points"]) for lane in transformed]
+
+    if lane_fit_degree > 0:
+        # 모든 차선에 동일한 곡선 fitting을 적용해 표시/ego 경계를 일치시킨다.
+        bev_top_y = float(bev_height) * lane_top_ratio
+        bev_bottom_y = float(bev_height) * lane_bottom_ratio
+        all_lanes = [
+            fit_lane_curve(
+                lane,
+                lane_fit_degree,
+                lane_fit_samples,
+                lane_fit_min_points,
+                bev_top_y,
+                bev_bottom_y,
+            )
+            for lane in all_lanes
+        ]
+
+    if lane_state is not None:
+        all_lanes = lane_state.smooth_detected_lanes(
+            all_lanes,
+            lane_smoothing,
+            bev_width,
+        )
+
+    transformed_for_slots = [
+        {
+            "points": lane_points,
+            "bottom_x": float(_lane_bottom_x(lane_points) or 0.0),
+            "score": float(transformed[idx]["score"]),
+        }
+        for idx, lane_points in enumerate(all_lanes)
+    ]
+    transformed_for_slots.sort(key=lambda lane: lane["bottom_x"])
+    lanes = _normalize_lane_slots(transformed_for_slots, bev_width, lane_state)
+    return [list(lane) for lane in lanes[:4]], all_lanes
+
+
+def build_lane_payload(
+    result: Dict[str, Any],
+    homography: np.ndarray,
+    bev_width: int,
+    bev_height: int,
+    source_width: int,
+    source_height: int,
+    correction: Optional[BevCorrection],
+    lane_fit_degree: int,
+    lane_fit_samples: int,
+    lane_fit_min_points: int,
+    lane_top_ratio: float,
+    lane_bottom_ratio: float,
+    lane_state: Optional[BevLaneState],
+    lane_smoothing: float,
+) -> List[List[Dict[str, int]]]:
+    """기존 호출부 호환을 위해 ego 처리용 고정 슬롯만 반환한다."""
+    lanes, _ = build_lane_outputs(
+        result,
+        homography,
+        bev_width,
+        bev_height,
+        source_width,
+        source_height,
+        correction,
+        lane_fit_degree,
+        lane_fit_samples,
+        lane_fit_min_points,
+        lane_top_ratio,
+        lane_bottom_ratio,
+        lane_state,
+        lane_smoothing,
+    )
+    return lanes
+
+
 def compute_lane_model(
     left_lane: List[Dict[str, int]],
     right_lane: List[Dict[str, int]],
@@ -195,56 +305,6 @@ def compute_lane_model(
         "curvature_gain": float(coeffs[0]),
         "ego_y_px": ego_y,
     }
-
-
-def build_lane_payload(
-    result: Dict[str, Any],
-    homography: np.ndarray,
-    bev_width: int,
-    bev_height: int,
-    source_width: int,
-    source_height: int,
-    correction: Optional[BevCorrection],
-    lane_fit_degree: int,
-    lane_fit_samples: int,
-    lane_fit_min_points: int,
-    lane_top_ratio: float,
-    lane_bottom_ratio: float,
-    lane_state: Optional[BevLaneState],
-    lane_smoothing: float,
-) -> List[List[Dict[str, int]]]:
-    """result JSON의 lane 목록을 Qt용 4슬롯 차선 payload로 변환한다."""
-    payload_width = int(result.get("width", 800))
-    payload_height = int(result.get("height", 480))
-    lanes_in = result.get("lanes", []) or []
-    lanes = _normalize_lane_slots(
-        lanes_in,
-        homography,
-        payload_width,
-        payload_height,
-        source_width,
-        source_height,
-        correction,
-        bev_width,
-        lane_state,
-    )
-
-    if lane_fit_degree > 0:
-        # 시각화와 path 계산이 안정되도록 lane polyline을 매끈하게 다시 샘플링한다.
-        bev_top_y = float(bev_height) * lane_top_ratio
-        bev_bottom_y = float(bev_height) * lane_bottom_ratio
-        lanes = fit_lane_set(
-            lanes,
-            lane_fit_degree,
-            lane_fit_samples,
-            lane_fit_min_points,
-            bev_top_y,
-            bev_bottom_y,
-        )
-
-    if lane_state is not None:
-        lanes = lane_state.smooth(lanes, lane_smoothing)
-    return [list(lane) for lane in lanes[:4]]
 
 
 def _build_control_payload(
@@ -358,7 +418,7 @@ def build_bev_payload(
     lane_top_ratio: float = 0.12,
     lane_bottom_ratio: float = 0.97,
     lane_state: Optional[BevLaneState] = None,
-    lane_smoothing: float = 0.7,
+    lane_smoothing: float = 0.88,
     steering_smoothing: float = 0.75,
     pp_lookahead_ratio: float = 0.58,
     pp_wheelbase_ratio: float = 0.12,
@@ -371,7 +431,7 @@ def build_bev_payload(
     object_track_alpha: float = 0.7,
 ) -> Dict[str, Any]:
     """기존 bridge 스크립트 호환용 통합 BEV payload 생성 함수."""
-    qt_lanes = build_lane_payload(
+    qt_lanes, lane_lines = build_lane_outputs(
         result,
         homography,
         bev_width,
@@ -406,6 +466,7 @@ def build_bev_payload(
         "width": bev_width,
         "height": bev_height,
         "lanes": qt_lanes,
+        "lane_lines": lane_lines,
         "bev_width": bev_width,
         "bev_height": bev_height,
         "bev_lanes": qt_lanes,

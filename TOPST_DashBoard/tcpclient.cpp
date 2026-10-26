@@ -236,7 +236,10 @@ void TcpClient::publishLaneData(const QJsonObject &object, int frameWidth) {
         normalizedLanes.replace(laneId, laneObject.value(QStringLiteral("points")).toArray());
     }
 
+    const QJsonArray laneLines = object.value(QStringLiteral("lane_lines")).toArray();
+    const QJsonArray displayLaneLines = laneLines.isEmpty() ? normalizedLanes : laneLines;
     emit laneDataUpdated(QString::fromUtf8(QJsonDocument(normalizedLanes).toJson(QJsonDocument::Compact)),
+                         QString::fromUtf8(QJsonDocument(displayLaneLines).toJson(QJsonDocument::Compact)),
                          frameWidth,
                          object.value(QStringLiteral("height")).toInt(480));
 }

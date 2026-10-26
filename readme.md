@@ -15,6 +15,8 @@
 3. 차선, 객체, 경로 및 속도 추천 데이터를 대시보드에 전송합니다.
 4. `--can-enable`을 지정하면 MICOM IPC를 통해 조향·속도·비상등 명령을 전송합니다.
 
+대시보드 속도계의 시연용 속도는 50 km/h에서 시작해 0~70 km/h 범위의 목표값으로 천천히 변합니다. 이 표시용 속도는 MICOM 모터 명령과 별도이며, 모터 명령은 장애물 기반 `recommended_speed_kmh`를 사용합니다.
+
 ## 요구 사항
 
 - Linux 환경
@@ -72,6 +74,8 @@ TCP 모드의 기본 보드 주소는 `192.168.0.100`이며 영상 포트는 `99
 python3 zonal_app.py --can-enable --ipc-path /dev/tcc_ipc_micom
 ```
 
+감속 권고 상태가 `slowing` 또는 `stop`이면 대시보드의 `BRAKE SIM` 표시와 MICOM 브레이크 LED를 켭니다. LED는 IPC 명령 ID `0x102`에 ON `0x01`, OFF `0x02`를 전송하며, 감속 권고가 해제되면 끕니다. 이 명령은 LED 표시만 제어하며 실제 제동 작동을 의미하지 않습니다.
+
 ## 주요 설정
 
 | 옵션 | 기본값 | 설명 |
@@ -90,6 +94,8 @@ python3 zonal_app.py --can-enable --ipc-path /dev/tcc_ipc_micom
 | `--can-enable` | 꺼짐 | MICOM IPC 제어 출력 활성화 |
 
 `display_bev.json`과 `control_bev.json`은 `Bridge_App/`에 있습니다. 시나리오 디렉터리 기본값은 이 저장소 경로가 아니므로, 저장소의 샘플 영상을 사용하려면 위 예제처럼 `--scenario-dir ../split_out`을 지정하세요.
+
+`display_bev.json`과 `control_bev.json`은 각각 대시보드 표시와 차량 제어에 사용하는 BEV 캘리브레이션입니다. 선택한 영상이 캘리브레이션 기준 영상과 다르면 해당 용도에 맞는 좌표 보정이 필요합니다.
 
 모든 브리지 옵션은 다음 명령으로 확인할 수 있습니다.
 

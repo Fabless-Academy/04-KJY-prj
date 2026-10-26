@@ -72,6 +72,18 @@ void LaneRibbonMesh::setPoints(const QVariantList &points) {
     emit pointsChanged();
 }
 
+QVariantList LaneRibbonMesh::lineSets() const {
+    return lineSets_;
+}
+
+void LaneRibbonMesh::setLineSets(const QVariantList &lineSets) {
+    if (lineSets_ == lineSets)
+        return;
+    lineSets_ = lineSets;
+    updateGeometry();
+    emit lineSetsChanged();
+}
+
 float LaneRibbonMesh::width() const {
     return width_;
 }
@@ -85,7 +97,7 @@ void LaneRibbonMesh::setWidth(float width) {
 }
 
 void LaneRibbonMesh::updateGeometry() {
-    if (points_.size() < 2 || width_ <= 0.0f) {
+    if ((points_.size() < 2 && lineSets_.isEmpty()) || width_ <= 0.0f) {
         vertexBuffer_->setData(QByteArray());
         positionAttribute_->setCount(0);
         normalAttribute_->setCount(0);
@@ -94,56 +106,65 @@ void LaneRibbonMesh::updateGeometry() {
     }
 
     QByteArray bytes;
-    bytes.reserve((points_.size() - 1) * 12 * 6 * sizeof(float));
+    int pointCount = points_.size();
+    for (const QVariant &lineValue : lineSets_)
+        pointCount += lineValue.toList().size();
+    bytes.reserve(qMax(0, pointCount - 1) * 12 * 6 * sizeof(float));
     const QVector3D normal(0.0f, 1.0f, 0.0f);
     const float halfWidth = width_ * 0.5f;
     int vertexCount = 0;
 
-    for (int i = 0; i < points_.size() - 1; ++i) {
-        // 인접한 두 점 사이에 좌/우 오프셋을 만들어 사각형 한 구간을 생성
-        const RibbonPoint p0 = parsePoint(points_.at(i));
-        const RibbonPoint p1 = parsePoint(points_.at(i + 1));
-        const float dx = p1.x - p0.x;
-        const float dz = p1.z - p0.z;
-        const float length = qSqrt(dx * dx + dz * dz);
-        if (length < 1e-4f)
-            continue;
+    const auto appendRibbon = [&](const QVariantList &points) {
+        for (int i = 0; i < points.size() - 1; ++i) {
+            // 인접한 두 점 사이에 좌/우 오프셋을 만들어 사각형 한 구간을 생성
+            const RibbonPoint p0 = parsePoint(points.at(i));
+            const RibbonPoint p1 = parsePoint(points.at(i + 1));
+            const float dx = p1.x - p0.x;
+            const float dz = p1.z - p0.z;
+            const float length = qSqrt(dx * dx + dz * dz);
+            if (length < 1e-4f)
+                continue;
 
-        const float nx = -dz / length * halfWidth;
-        const float nz = dx / length * halfWidth;
+            const float nx = -dz / length * halfWidth;
+            const float nz = dx / length * halfWidth;
 
-        RibbonPoint left0;
-        left0.x = p0.x + nx;
-        left0.y = p0.y;
-        left0.z = p0.z + nz;
-        RibbonPoint right0;
-        right0.x = p0.x - nx;
-        right0.y = p0.y;
-        right0.z = p0.z - nz;
-        RibbonPoint left1;
-        left1.x = p1.x + nx;
-        left1.y = p1.y;
-        left1.z = p1.z + nz;
-        RibbonPoint right1;
-        right1.x = p1.x - nx;
-        right1.y = p1.y;
-        right1.z = p1.z - nz;
+            RibbonPoint left0;
+            left0.x = p0.x + nx;
+            left0.y = p0.y;
+            left0.z = p0.z + nz;
+            RibbonPoint right0;
+            right0.x = p0.x - nx;
+            right0.y = p0.y;
+            right0.z = p0.z - nz;
+            RibbonPoint left1;
+            left1.x = p1.x + nx;
+            left1.y = p1.y;
+            left1.z = p1.z + nz;
+            RibbonPoint right1;
+            right1.x = p1.x - nx;
+            right1.y = p1.y;
+            right1.z = p1.z - nz;
 
-        appendVertex(bytes, left0, normal);
-        appendVertex(bytes, right0, normal);
-        appendVertex(bytes, left1, normal);
-        appendVertex(bytes, right0, normal);
-        appendVertex(bytes, right1, normal);
-        appendVertex(bytes, left1, normal);
+            appendVertex(bytes, left0, normal);
+            appendVertex(bytes, right0, normal);
+            appendVertex(bytes, left1, normal);
+            appendVertex(bytes, right0, normal);
+            appendVertex(bytes, right1, normal);
+            appendVertex(bytes, left1, normal);
 
-        appendVertex(bytes, left1, normal);
-        appendVertex(bytes, right0, normal);
-        appendVertex(bytes, left0, normal);
-        appendVertex(bytes, left1, normal);
-        appendVertex(bytes, right1, normal);
-        appendVertex(bytes, right0, normal);
-        vertexCount += 12;
-    }
+            appendVertex(bytes, left1, normal);
+            appendVertex(bytes, right0, normal);
+            appendVertex(bytes, left0, normal);
+            appendVertex(bytes, left1, normal);
+            appendVertex(bytes, right1, normal);
+            appendVertex(bytes, right0, normal);
+            vertexCount += 12;
+        }
+    };
+
+    appendRibbon(points_);
+    for (const QVariant &lineValue : lineSets_)
+        appendRibbon(lineValue.toList());
 
     // 완성된 vertex buffer를 geometry attribute에 반영
     vertexBuffer_->setData(bytes);

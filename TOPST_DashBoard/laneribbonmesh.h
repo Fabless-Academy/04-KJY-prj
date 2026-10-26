@@ -12,6 +12,7 @@ class LaneRibbonMesh : public Qt3DRender::QGeometryRenderer {
     Q_OBJECT
     // points는 월드 좌표 목록, width는 그 점들을 따라 만드는 리본의 폭
     Q_PROPERTY(QVariantList points READ points WRITE setPoints NOTIFY pointsChanged)
+    Q_PROPERTY(QVariantList lineSets READ lineSets WRITE setLineSets NOTIFY lineSetsChanged)
     Q_PROPERTY(float width READ width WRITE setWidth NOTIFY widthChanged)
 
 public:
@@ -20,11 +21,15 @@ public:
     QVariantList points() const;
     void setPoints(const QVariantList &points);
 
+    QVariantList lineSets() const;
+    void setLineSets(const QVariantList &lineSets);
+
     float width() const;
     void setWidth(float width);
 
 signals:
     void pointsChanged();
+    void lineSetsChanged();
     void widthChanged();
 
 private:
@@ -32,6 +37,7 @@ private:
     void updateGeometry();
 
     QVariantList points_;
+    QVariantList lineSets_;
     float width_ = 0.2f;
     Qt3DRender::QGeometry *geometry_ = nullptr;
     Qt3DRender::QBuffer *vertexBuffer_ = nullptr;

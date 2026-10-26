@@ -30,7 +30,7 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 280; height: 280
             // speedKph는 root에서 clamp된 값을 받아 속도계 needle을 구동한다.
-            value: root.speedKph; maximumValue: 280
+            value: root.speedKph; maximumValue: 70
             style: DashboardGaugeStyle {}
             Behavior on value { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
         }

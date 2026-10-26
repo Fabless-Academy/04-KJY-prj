@@ -11,8 +11,8 @@ class DashboardTelemetry:
     """Qt 계기판 시연용으로 천천히 변하는 telemetry를 생성한다."""
 
     def __init__(self):
-        self.speed_kmh = 96.0
-        self.speed_target = 96.0
+        self.speed_kmh = 50.0
+        self.speed_target = 50.0
         self.rpm = 2200.0
         self.rpm_target = 2200.0
         self.fuel_l = 820.0
@@ -21,7 +21,7 @@ class DashboardTelemetry:
 
     def _pick_new_targets(self) -> None:
         """다음 구간에서 서서히 수렴할 목표 speed와 rpm 값을 정한다."""
-        self.speed_target = random.uniform(80.0, 160.0)
+        self.speed_target = random.uniform(0.0, 70.0)
         self.rpm_target = max(
             900.0,
             min(5200.0, 900.0 + self.speed_target * 30.0 + random.uniform(-120.0, 120.0)),

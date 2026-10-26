@@ -146,8 +146,10 @@ def fit_lane_curve(
     except (np.linalg.LinAlgError, ValueError):
         return [{"x": int(round(float(p.get("x", 0)))), "y": int(round(float(p.get("y", 0))))} for p in sorted_points]
 
-    y_start = float(np.max(ys)) if bottom_y is None else float(bottom_y)
-    y_end = float(np.min(ys)) if top_y is None else float(top_y)
+    observed_bottom_y = float(np.max(ys))
+    observed_top_y = float(np.min(ys))
+    y_start = observed_bottom_y if bottom_y is None else min(float(bottom_y), observed_bottom_y)
+    y_end = observed_top_y if top_y is None else max(float(top_y), observed_top_y)
     if abs(y_start - y_end) < 1e-3:
         return [{"x": int(round(float(p.get("x", 0)))), "y": int(round(float(p.get("y", 0))))} for p in sorted_points]
 

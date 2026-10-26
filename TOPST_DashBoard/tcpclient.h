@@ -27,7 +27,7 @@ signals:
     void speedRecommendationUpdated(double recommendedSpeedKmh, const QString &status, double closestObjectYRatio);
     void simulatedBrakeLedUpdated(bool active);
     void laneStatusUpdated(const QString &laneStatusJson);
-    void laneDataUpdated(const QString &lanesJson, int frameWidth, int frameHeight);
+    void laneDataUpdated(const QString &lanesJson, const QString &laneLinesJson, int frameWidth, int frameHeight);
     void laneModelUpdated(const QString &laneModelJson);
     void objectDataUpdated(const QString &objectsJson);
     void connectionStatusChanged(const QString &status);
